@@ -838,6 +838,40 @@ const DEFAULT_PROJECT_DATA = [
     }
 ];
 
+// Função para carregar e processar o arquivo de descrições
+async function loadProjectDescriptions() {
+    try {
+        const response = await fetch('descricoes');
+        if (!response.ok) {
+            console.warn('Não foi possível carregar o arquivo de descrições');
+            return new Map();
+        }
+        
+        const projects = await response.json();
+        const projectsMap = new Map();
+        
+        projects.forEach(project => {
+            if (project.rawData?.GPSCoordinates?.length > 0) {
+                const coords = project.rawData.GPSCoordinates[0].location;
+                if (coords && coords.x && coords.y) {
+                    projectsMap.set(project.sourceId, {
+                        lat: parseFloat(coords.y),
+                        lng: parseFloat(coords.x),
+                        mapUrl: `https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(coords.x)-0.1},${parseFloat(coords.y)-0.1},${parseFloat(coords.x)+0.1},${parseFloat(coords.y)+0.1}&layer=mapnik&marker=${parseFloat(coords.y)},${parseFloat(coords.x)}`
+                    });
+                    console.log(`Coordenadas para ${project.name || project.sourceId}:`, coords);
+                }
+            }
+        });
+        
+        console.log('Dos projetos carregados:', projectsMap.size, 'possuem coordenadas');
+        return projectsMap;
+    } catch (error) {
+        console.error('Erro ao carregar descrições dos projetos:', error);
+        return new Map();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     const sidebarNav = document.getElementById('sidebar-nav');
     const projectsGrid = document.getElementById('projects-grid');
@@ -923,244 +957,201 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function fetchProjectsFromAPI() {
     try {
-        let data;
-
-        if (IS_STATIC_ENV) {
-            // GitHub Pages / ambiente estático: lê diretamente de projects.json
-            const response = await fetch('projects.json', { cache: 'no-store' });
-            if (!response.ok) {
-                throw new Error('Erro ao buscar projects.json estático');
-            }
-            data = await response.json();
-            console.log('RAW STATIC DATA (projects.json):', data);
-        } else {
-            // Ambiente local: chama diretamente a API Node em localhost:3001
-            const response = await fetch('http://localhost:3001/api/projects');
-            if (!response.ok) {
-                throw new Error('Erro ao buscar projetos da API');
-            }
-            data = await response.json();
-            console.log('RAW API DATA:', data);
-        }
-
-        // Se nada veio (API ou JSON), usa fallback
-        if (!data || data.length === 0) {
-            console.log('Nenhum projeto retornado, usando dados de exemplo...');
-            data = [
-                {
-                    id: 'tunel-santos',
-                    sector: 'Portos',
-                    name: 'Túnel Santos-Guarujá',
-                    status: 'Leilão Realizado',
-                    description: 'Parceria Público-Privada (PPP) entre o Governo Federal e o Estado de São Paulo para a construção e operação de um túnel submerso ligando as cidades de Santos e Guarujá.',
-                    currentSituation: 'Leilão realizado em 05 de Setembro de 2025.',
-                    progress: 0
-                },
-                {
-                    id: 'porto-parangua',
-                    sector: 'Portos',
-                    name: 'Porto de Paranaguá',
-                    status: 'Aguardando Edital',
-                    description: 'Concessão do Canal de Acesso Aquaviário por 25 anos para modernização e operação.',
-                    currentSituation: 'Aguardando retorno do relator para publicação do edital. A Resolução CPPI já definiu as condições da desestatização.',
-                    progress: 0
-                },
-                {
-                    id: 'fiol-1',
-                    sector: 'Ferrovias',
-                    name: 'FIOL 1',
-                    status: 'Em Obras',
-                    description: 'Construção da Ferrovia de Integração Oeste-Leste, Trecho 1, fundamental para o escoamento da produção de grãos e minérios.',
-                    currentSituation: 'Obras em andamento com 75% de avanço total. Lotes 1F e 2F em execução, Lote 3F concluído, Lote 4F em execução. Início da operação previsto para 2027.',
-                    progress: 75
-                }
-            ];
-        }
-        
-        // Mapear os dados para o formato esperado pelo frontend,
-        // aproveitando todos os campos já enviados pelo backend
-        const mappedData = data.map(project => {
-            const normalizedRisks = project.risks
-                ? (Array.isArray(project.risks) ? project.risks : [project.risks])
-                : [];
-
-            const raw = project.rawData || project.raw || {};
-            const descriptionFromRaw = raw.Description || raw.description || null;
-            const completionFromRaw = typeof raw.Completion === 'number' ? raw.Completion : null;
-
-            const progressValue =
-                project.progress !== undefined && project.progress !== null
-                    ? project.progress
-                    : (completionFromRaw !== null ? Math.round(completionFromRaw * 100) : 0);
-
-            // Campos adicionais úteis para os cards, extraídos do rawData
-            const locationsArr = Array.isArray(raw.Locations)
-                ? raw.Locations
-                : (raw.ManualDetails && Array.isArray(raw.ManualDetails.locations)) ? raw.ManualDetails.locations : [];
-            const territoriesArr = Array.isArray(raw.Territories)
-                ? raw.Territories.map(t => (t && (t.Value || t.value)) || t).filter(Boolean)
-                : (raw.ManualDetails && Array.isArray(raw.ManualDetails.territories)) ? raw.ManualDetails.territories : [];
-            const locationText = locationsArr.length ? locationsArr.join(', ') : null;
-            const territoriesText = territoriesArr.length ? territoriesArr.join(', ') : null;
-
-            const ownerOrg =
-                raw.PMLeaderOrganisation ||
-                (Array.isArray(raw.ProjectOrganizations) && raw.ProjectOrganizations.length > 0
-                    ? (raw.ProjectOrganizations[0].Value || raw.ProjectOrganizations[0].value)
-                    : null) ||
-                (raw.ManualDetails && raw.ManualDetails.ownerOrganisation) ||
-                null;
-
-            const typeOfProjectArr = Array.isArray(raw.TypeOfProject)
-                ? raw.TypeOfProject
-                : (raw.ManualDetails && Array.isArray(raw.ManualDetails.typeOfProject)) ? raw.ManualDetails.typeOfProject : [];
-            const projectTypeText = typeOfProjectArr.length ? typeOfProjectArr.join(', ') : null;
-
-            const currency =
-                (raw.OriginalCurrency && (raw.OriginalCurrency.Value || raw.OriginalCurrency.value)) ||
-                (raw.ManualDetails && raw.ManualDetails.originalCurrency) ||
-                'R$';
-
-            const estimatedCostNumber =
-                (typeof project.estimatedCost === 'number' && project.estimatedCost > 0) ? project.estimatedCost :
-                (typeof raw.EstimatedCapitalCost === 'number' && raw.EstimatedCapitalCost > 0) ? raw.EstimatedCapitalCost :
-                (raw.ManualDetails && typeof raw.ManualDetails.estimatedCapitalCost === 'number' && raw.ManualDetails.estimatedCapitalCost > 0) ? raw.ManualDetails.estimatedCapitalCost :
-                null;
-
-            let estimatedCostText = null;
-            if (typeof estimatedCostNumber === 'number' && !Number.isNaN(estimatedCostNumber) && estimatedCostNumber > 0) {
-                const millions = estimatedCostNumber / 1_000_000;
+        // Tenta carregar do arquivo local primeiro
+        try {
+            // Primeiro tenta carregar o arquivo 'projetos'
+            let response = await fetch('projetos', { cache: 'no-store' });
+            let data;
+            
+            if (response.ok) {
                 try {
-                    estimatedCostText = `${currency} ${millions.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mi`;
-                } catch {
-                    estimatedCostText = `${currency} ${millions.toFixed(1)} mi`;
+                    data = await response.json();
+                    console.log('Dados carregados do arquivo projetos:', data);
+                    
+                    // Função para mapear um projeto para o formato esperado
+                    const mapProject = (project) => ({
+                        id: project.id || project.sourceId || Math.random().toString(36).substr(2, 9),
+                        name: project.name || 'Projeto sem nome',
+                        sector: project.sector || 'Outros',
+                        status: project.status || 'Em andamento',
+                        statusColor: getStatusColor(project.status || 'Em andamento'),
+                        details: {
+                            description: project.description || 'Descrição não disponível',
+                            currentSituation: project.currentSituation || 'Situação atual não informada',
+                            nextSteps: project.nextSteps || 'Próximos passos não definidos',
+                            risks: Array.isArray(project.risks) ? project.risks : 
+                                  (project.risks ? [project.risks] : ['Riscos não mapeados']),
+                            // Inclui os dados brutos para referência
+                            ...(project.rawData || {})
+                        },
+                        // Mantém os dados originais para referência
+                        rawData: project.rawData || {}
+                    });
+                    
+                    // Se os dados são um array, mapeia para o formato esperado
+                    if (Array.isArray(data)) {
+                        return data.map(mapProject);
+                    }
+                    
+                    // Se for um objeto com uma propriedade que é um array, mapeia essa propriedade
+                    for (const key in data) {
+                        if (Array.isArray(data[key])) {
+                            console.log(`Mapeando array da propriedade '${key}'`);
+                            return data[key].map(mapProject);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Erro ao processar o arquivo projetos, tentando próxima opção...', e);
                 }
             }
-
-            // Gera um embed de mapa (OpenStreetMap) sempre que houver coordenadas no rawData
-            let mapEmbed = null;
-            if (Array.isArray(raw.GPSCoordinates) && raw.GPSCoordinates.length > 0) {
-                const first = raw.GPSCoordinates[0] || {};
-                const loc = first.location || {};
-                const lon = parseFloat(loc.x);
-                const lat = parseFloat(loc.y);
-                if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
-                    const delta = 0.05;
-                    const minLon = lon - delta;
-                    const minLat = lat - delta;
-                    const maxLon = lon + delta;
-                    const maxLat = lat + delta;
-                    const src = `https://www.openstreetmap.org/export/embed.html?bbox=${minLon},${minLat},${maxLon},${maxLat}&layer=mapnik&marker=${lat},${lon}`;
-                    mapEmbed = `<iframe class="w-full h-full" src="${src}" style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+            
+            // Se não encontrou no formato esperado, tenta carregar projetos_descricao.json
+            console.log('projetos não encontrado ou em formato inválido, tentando projetos_descricao.json...');
+            response = await fetch('projetos_descricao.json', { cache: 'no-store' });
+            
+            // Se não encontrar, tenta carregar de projects.json
+            if (!response.ok) {
+                console.log('projetos_descricao.json não encontrado, tentando projects.json...');
+                response = await fetch('projects.json', { cache: 'no-store' });
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar arquivo local de projetos');
                 }
             }
-
-            const finalName =
-                project.name ||
-                raw.Name ||
-                'Projeto sem nome';
-
-            const manualDescription = project.description ? String(project.description).trim() : '';
-            const isPlaceholderDesc = manualDescription && manualDescription.toLowerCase() === 'a definir';
-
-            const finalDescription =
-                (!isPlaceholderDesc && manualDescription) ||
-                descriptionFromRaw ||
-                manualDescription ||
-                'Descrição não disponível';
-
-            return {
-                id: project.sourceId || project.id,
-                sector: project.sector || raw.Sector?.Value || 'Outros',
-                name: finalName,
-                status: project.status || raw.CurrentProjectStatus?.Value || 'Em andamento',
-                statusColor: getStatusColor(project.status || raw.CurrentProjectStatus?.Value || 'Em andamento'),
-                details: {
-                    description: finalDescription,
-                    progress: progressValue,
-                    currentSituation: project.currentSituation || 'Situação não informada',
-                    // O layout atual usa "deliberation" para o card de Próximos Passos
-                    deliberation: project.nextSteps || 'Próximos passos não informados',
-                    nextSteps: project.nextSteps || 'Próximos passos não informados',
-                    risks: normalizedRisks,
-                    mapEmbed,
-                    location: locationText,
-                    territories: territoriesText,
-                    owner: ownerOrg,
-                    projectType: projectTypeText,
-                    estimatedCostText
-                },
-                // Expor tudo que veio da API/backend para uso no frontend
-                rawData: raw,
-                backendProject: project
-            };
-        });
-
-        console.log('MAPPED FRONTEND DATA:', mappedData);
-        return mappedData;
+            
+            data = await response.json();
+            console.log('Dados carregados do arquivo local:', data);
+            
+            // Se os dados são um array, retorna diretamente
+            if (Array.isArray(data)) {
+                return data;
+            }
+            
+            // Se for um objeto com uma propriedade que é um array, retorna essa propriedade
+            for (const key in data) {
+                if (Array.isArray(data[key])) {
+                    console.log(`Retornando array da propriedade '${key}'`);
+                    return data[key];
+                }
+            }
+            
+            // Se não encontrar um array válido, lança um erro
+            throw new Error('Formato de dados inválido no arquivo local');
+            
+        } catch (localError) {
+            console.warn('Não foi possível carregar arquivo local, tentando API...', localError);
+            
+            // Se falhar, tenta a API (opcional, você pode remover se quiser apenas o arquivo local)
+            try {
+                const response = await fetch('http://localhost:3001/api/projects');
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar projetos da API');
+                }
+                const data = await response.json();
+                console.log('Dados carregados da API:', data);
+                return data;
+            } catch (apiError) {
+                console.error('Erro ao buscar da API:', apiError);
+                // Retorna dados de exemplo em caso de falha total
+                console.log('Usando dados de exemplo devido a falha no carregamento...');
+                return [
+                    {
+                        id: 'tunel-santos',
+                        sector: 'Portos',
+                        name: 'Túnel Santos-Guarujá',
+                        status: 'Leilão Realizado',
+                        statusColor: getStatusColor('Leilão Realizado'),
+                        details: {
+                            description: 'Parceria Público-Privada (PPP) entre o Governo Federal e o Estado de São Paulo para a construção e operação de um túnel submerso ligando as cidades de Santos e Guarujá.',
+                            currentSituation: 'Leilão realizado em 05 de Setembro de 2025.',
+                            nextSteps: 'Assinatura do contrato e início das obras.',
+                            risks: ['Atraso na liberação de licenças ambientais'],
+                            progress: 0
+                        }
+                    },
+                    {
+                        id: 'porto-parangua',
+                        sector: 'Portos',
+                        name: 'Porto de Paranaguá',
+                        status: 'Aguardando Edital',
+                        statusColor: getStatusColor('Aguardando Edital'),
+                        details: {
+                            description: 'Concessão do Canal de Acesso Aquaviário por 25 anos para modernização e operação.',
+                            currentSituation: 'Aguardando retorno do relator para publicação do edital. A Resolução CPPI já definiu as condições da desestatização.',
+                            nextSteps: 'Publicação do edital e realização do leilão.',
+                            risks: ['Mudanças nas condições de mercado podem afetar o interesse dos investidores'],
+                            progress: 0
+                        }
+                    },
+                    {
+                        id: 'fiol-1',
+                        sector: 'Ferrovias',
+                        name: 'FIOL 1',
+                        status: 'Em Obras',
+                        statusColor: getStatusColor('Em Obras'),
+                        details: {
+                            description: 'Construção da Ferrovia de Integração Oeste-Leste, Trecho 1, fundamental para o escoamento da produção de grãos e minérios.',
+                            currentSituation: 'Obras em andamento com 75% de avanço total. Lotes 1F e 2F em execução, Lote 3F concluído, Lote 4F em execução. Início da operação previsto para 2027.',
+                            nextSteps: 'Conclusão dos lotes em andamento e início dos testes operacionais.',
+                            risks: ['Atraso na liberação de recursos', 'Condições climáticas desfavoráveis'],
+                            progress: 75
+                        }
+                    }
+                ];
+                console.log('MAPPED FRONTEND DATA (fallback):', fallback);
+                return fallback;
+            }
+        }
     } catch (error) {
-        console.error('Erro ao buscar projetos da API, usando dados de exemplo...', error);
-        // Retornar dados de exemplo em caso de erro
-        const fallback = [
-            {
-                id: 'tunel-santos',
-                sector: 'Portos',
-                name: 'Túnel Santos-Guarujá',
-                status: 'Leilão Realizado',
-                statusColor: getStatusColor('Leilão Realizado'),
-                details: {
-                    description: 'Parceria Público-Privada (PPP) entre o Governo Federal e o Estado de São Paulo para a construção e operação de um túnel submerso ligando as cidades de Santos e Guarujá.',
-                    progress: 0,
-                    currentSituation: 'Leilão realizado em 05 de Setembro de 2025.'
-                }
-            },
-            {
-                id: 'porto-parangua',
-                sector: 'Portos',
-                name: 'Porto de Paranaguá',
-                status: 'Aguardando Edital',
-                statusColor: getStatusColor('Aguardando Edital'),
-                details: {
-                    description: 'Concessão do Canal de Acesso Aquaviário por 25 anos para modernização e operação.',
-                    progress: 0,
-                    currentSituation: 'Aguardando retorno do relator para publicação do edital. A Resolução CPPI já definiu as condições da desestatização.'
-                }
-            },
-            {
-                id: 'fiol-1',
-                sector: 'Ferrovias',
-                name: 'FIOL 1',
-                status: 'Em Obras',
-                statusColor: getStatusColor('Em Obras'),
-                details: {
-                    description: 'Construção da Ferrovia de Integração Oeste-Leste, Trecho 1, fundamental para o escoamento da produção de grãos e minérios.',
-                    progress: 75,
-                    currentSituation: 'Obras em andamento com 75% de avanço total. Lotes 1F e 2F em execução, Lote 3F concluído, Lote 4F em execução. Início da operação previsto para 2027.'
-                }
-            }
-        ];
-        console.log('MAPPED FRONTEND DATA (fallback):', fallback);
-        return fallback;
+        console.error('Erro ao buscar projetos:', error);
+        return [];
     }
 }
 
-    function getStatusColor(status) {
-        if (!status) return 'gray';
-        
-        const statusLower = status.toLowerCase();
-        if (statusLower.includes('concluído') || statusLower.includes('concluido') || statusLower.includes('assinado')) return 'green';
-        if (statusLower.includes('andamento') || statusLower.includes('em andamento') || statusLower.includes('licitação')) return 'blue';
-        if (statusLower.includes('atrasado') || statusLower.includes('parado') || statusLower.includes('suspenso')) return 'red';
-        if (statusLower.includes('planejamento') || statusLower.includes('estudo')) return 'yellow';
-        return 'gray';
-    }
+function getStatusColor(status) {
+    if (!status) return 'gray';
+    
+    const statusLower = status.toLowerCase();
+    if (statusLower.includes('concluído') || statusLower.includes('concluido') || statusLower.includes('assinado')) return 'green';
+    if (statusLower.includes('andamento') || statusLower.includes('em andamento') || statusLower.includes('licitação')) return 'blue';
+    if (statusLower.includes('atrasado') || statusLower.includes('parado') || statusLower.includes('suspenso')) return 'red';
+    if (statusLower.includes('planejamento') || statusLower.includes('estudo')) return 'yellow';
+    return 'gray';
+}
 
     async function loadData() {
         try {
             // Tenta carregar da API primeiro
             projectData = await fetchProjectsFromAPI();
-        // expõe para debug no console do navegador
-        try { window.projectData = projectData; } catch {}
+            
+            // Carrega as descrições dos projetos com as coordenadas
+            const projectsMap = await loadProjectDescriptions();
+            
+            console.log('Projetos com coordenadas encontrados:', projectsMap.size);
+            
+            // Atualiza os projetos com as coordenadas
+            projectData = projectData.map(project => {
+                // Tenta encontrar pelo sourceId (que é o id usado no arquivo descricoes)
+                const projectKey = project.rawData?.Guid || project.id;
+                
+                if (projectsMap.has(projectKey)) {
+                    const coords = projectsMap.get(projectKey);
+                    console.log(`Adicionando coordenadas ao projeto ${project.name}:`, coords);
+                    return {
+                        ...project,
+                        coordinates: {
+                            lat: coords.lat,
+                            lng: coords.lng
+                        },
+                        mapUrl: coords.mapUrl
+                    };
+                } else {
+                    console.log(`Nenhuma coordenada encontrada para o projeto ${project.name} (${projectKey})`);
+                }
+                return project;
+            });
+            
+            // Expõe para debug no console do navegador
+            try { window.projectData = projectData; } catch {}
             
             // Se não retornou projetos da API, tenta carregar do Supabase ou do arquivo JSON
             if (projectData.length === 0) {
@@ -1188,20 +1179,12 @@ async function fetchProjectsFromAPI() {
             projectData = [...DEFAULT_PROJECT_DATA];
         }
         
-        // Filtra projetos do setor Saúde/Saude/Health
-        projectData = projectData.filter(project => {
-            if (!project.sector) return true;
-            const sectorLower = project.sector.toLowerCase().trim();
-            return !['saúde', 'saude', 'health', 'saúde '].includes(sectorLower) &&
-                   !sectorLower.includes('saúde') &&
-                   !sectorLower.includes('saude') &&
-                   !sectorLower.includes('health');
-        });
-        
-        // Remove projetos de teste
+        // Remove apenas projetos de teste
         projectData = projectData.filter(project => 
             !project.name || !project.name.toLowerCase().includes('teste')
         );
+        
+        console.log('Total de projetos carregados:', projectData.length);
         
         sectors = ['Todos', ...new Set(projectData.map(p => p.sector))];
     }
@@ -2217,55 +2200,100 @@ async function fetchProjectsFromAPI() {
             </style>
         `;
 
-        modalBody.innerHTML = `
-            <p class="text-sm font-semibold uppercase tracking-wider text-blue-600">${baseProject.sector}</p>
-            <h2 class="text-4xl font-extrabold text-gray-800 mt-2 mb-6">${baseProject.name}</h2>
-            <div class="modal-info-grid items-stretch">
-                <div class="bg-white border border-gray-200 rounded-xl p-4 h-full flex flex-col card--descricao">
-                    <h3 class="text-lg font-bold mb-2 text-gray-700">Descrição do Projeto</h3>
-                    <p class="text-gray-600 leading-relaxed">${details.description || ''}</p>
-                    ${details.location || details.territories || details.owner || details.projectType || details.estimatedCostText ? `
-                        <div class="mt-4 text-sm text-gray-600 space-y-1">
-                            ${details.location || details.territories ? `<p><span class="font-semibold">Localização:</span> ${details.location || details.territories}</p>` : ''}
-                            ${details.owner ? `<p><span class="font-semibold">Responsável:</span> ${details.owner}</p>` : ''}
-                            ${details.projectType ? `<p><span class="font-semibold">Tipo de Projeto:</span> ${details.projectType}</p>` : ''}
-                            ${details.estimatedCostText ? `<p><span class="font-semibold">Investimento estimado:</span> ${details.estimatedCostText}</p>` : ''}
-                        </div>
-                    ` : ''}
+        const mapHtml = project.coordinates ? `
+            <div class="mt-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Localização</h3>
+                <div class="h-64 w-full rounded-lg overflow-hidden border border-gray-200">
+                    <iframe 
+                        width="100%" 
+                        height="100%" 
+                        frameborder="0" 
+                        scrolling="no" 
+                        marginheight="0" 
+                        marginwidth="0" 
+                        src="${project.mapUrl}">
+                    </iframe>
                 </div>
-
-                <div class="bg-white border border-gray-200 rounded-xl p-4 h-full flex flex-col card--situacao">
-                    <h3 class="text-lg font-bold mb-2 text-gray-700">Situação Atual</h3>
-                    <p class="text-gray-600">${details.currentSituation || 'Não informado'}</p>
-                    ${details.startDateOverall ? `<p class="text-xs text-gray-500 mt-1">Data de início: ${details.startDateOverall}</p>` : ''}
-                </div>
-
-                <div class="bg-white border border-gray-200 rounded-xl p-4 h-full flex flex-col card--deliberacao">
-                    <h3 class="text-lg font-bold mb-2 text-gray-700">Próximos Passos</h3>
-                    <p class="text-gray-600">${details.deliberation || 'Não informado'}</p>
-                </div>
-
-                <div class="bg-white border border-gray-200 rounded-xl p-4 h-full flex flex-col card--riscos">
-                    <h3 class="text-lg font-bold text-gray-700 mb-2">Pontos de Atenção</h3>
-                    ${details.risks && details.risks.length > 0 ? `
-                        <ul class="list-disc list-inside text-gray-700 space-y-1">
-                            ${details.risks.map(risk => `<li>${risk}</li>`).join('')}
-                        </ul>
-                    ` : `<p class=\"text-gray-600\">Não informado</p>`}
-                </div>
-
-                <div class="bg-white border border-gray-200 rounded-xl p-4 h-full flex flex-col card--mapa">
-                    <h3 class="text-lg font-bold mb-2 text-gray-700">Mapa do Projeto</h3>
-                    ${details.mapEmbed
-                        ? `<div class="w-full h-48 md:h-full rounded-lg overflow-hidden border border-gray-200">${details.mapEmbed}</div>`
-                        : '<div class="w-full h-48 bg-gray-100 rounded-lg border border-dashed border-gray-300 flex items-center justify-center text-gray-500">Mapa (pequena escala)</div>'
-                    }
-                </div>
+                <p class="text-sm text-gray-500 mt-2">Coordenadas: ${project.coordinates.lat.toFixed(4)}, ${project.coordinates.lng.toFixed(4)}</p>
             </div>
-            <div class="mt-4 bg-white border border-gray-200 rounded-xl p-4">
-                <h3 class="text-lg font-bold text-gray-700 mb-2">ETAPA:</h3>
-                ${timelineHTML}
-                <div class="phase-note"></div>
+        ` : '';
+
+        // Adiciona o HTML ao modal
+        modalBody.innerHTML = `
+            <div class="space-y-6">
+                <!-- Cabeçalho do Projeto -->
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-sm text-gray-500">${project.sector}</p>
+                            <h2 class="text-2xl font-bold text-gray-900 mt-1">${project.name}</h2>
+                        </div>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${project.statusColor === 'green' ? 'bg-green-100 text-green-800' : project.statusColor === 'red' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">
+                            ${project.status}
+                        </span>
+                    </div>
+                    
+                    <!-- Seção de Detalhes -->
+                    <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Coluna 1: Descrição -->
+                        <div class="md:col-span-2 space-y-4">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-2">Descrição</h3>
+                                <p class="text-gray-700">${project.details?.description || 'Descrição não disponível'}</p>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Situação Atual</h3>
+                                    <p class="text-gray-700">${project.details?.currentSituation || 'Informação não disponível'}</p>
+                                </div>
+                                
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <h3 class="text-lg font-semibold text-gray-900 mb-2">Próximos Passos</h3>
+                                    <p class="text-gray-700">${project.details?.nextSteps || 'Informação não disponível'}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-2">Pontos de Atenção</h3>
+                                <ul class="list-disc list-inside space-y-1 text-gray-700">
+                                    ${Array.isArray(project.details?.risks) && project.details.risks.length > 0 
+                                        ? project.details.risks.map(risk => `<li>${risk}</li>`).join('')
+                                        : '<li>Nenhum ponto de atenção identificado</li>'}
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <!-- Coluna 2: Mapa -->
+                        <div class="space-y-4">
+                            ${project.coordinates ? `
+                            <div class="h-64 w-full rounded-lg overflow-hidden border border-gray-200">
+                                <iframe 
+                                    width="100%" 
+                                    height="100%" 
+                                    frameborder="0" 
+                                    scrolling="no" 
+                                    marginheight="0" 
+                                    marginwidth="0" 
+                                    src="${project.mapUrl}">
+                                </iframe>
+                                <p class="text-sm text-gray-500 mt-2">Coordenadas: ${project.coordinates.lat.toFixed(4)}, ${project.coordinates.lng.toFixed(4)}</p>
+                            </div>` : `
+                            <div class="bg-gray-100 rounded-lg h-64 flex items-center justify-center text-gray-500">
+                                <div class="text-center p-6">
+                                    <i class="fas fa-map-marked-alt text-4xl mb-2 text-gray-300"></i>
+                                    <p>Localização não disponível</p>
+                                </div>
+                            </div>`}
+                        </div>
+                    </div>
+                    
+                    <!-- Linha do Tempo -->
+                    <div class="mt-6">
+                        ${timelineHTML}
+                        <div class="phase-note mt-4 text-sm text-gray-500"></div>
+                    </div>
+                </div>
             </div>
         `;
 

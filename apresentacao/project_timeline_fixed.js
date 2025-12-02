@@ -322,8 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             `;
-        });
-        });
+        }).join('');
     }
     
     // Helper function to format status text
@@ -398,28 +397,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!card) return;
             
             const projectId = card.dataset.id;
-            const project = window.projectData?.find(p => p.id === projectId);
-            if (project) {
-                e.preventDefault();
-                e.stopPropagation();
-                showTimelineModal(project);
-            }
-        });
-
-        // Add click handler to timeline buttons
-        document.addEventListener('click', function(e) {
-            const timelineBtn = e.target.closest('.open-timeline');
-            if (!timelineBtn) return;
-            
-            const projectId = timelineBtn.dataset.projectId || timelineBtn.closest('[data-id]')?.dataset.id;
             if (!projectId) return;
             
-            const project = window.projectData?.find(p => p.id === projectId);
-            if (project) {
-                e.preventDefault();
-                e.stopPropagation();
-                showTimelineModal(project);
-            }
+            // Find the project data
+            const project = window.projectsData?.find(p => p.id === projectId);
+            if (!project) return;
+            
+            // Show the timeline modal
+            showTimelineModal(project);
         });
     }
 
@@ -428,82 +413,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Make the showTimelineModal function available globally
     window.showTimelineModal = showTimelineModal;
-
-    // Add the timeline modal styles
-    if (!document.getElementById('timeline-styles')) {
-        const styleElement = document.createElement('style');
-        styleElement.id = 'timeline-styles';
-        styleElement.textContent = `
-            .timeline-step {
-                position: relative;
-                padding-left: 3rem;
-                margin-bottom: 1rem;
-            }
-
-            .timeline-step:not(:last-child)::after {
-                content: '';
-                position: absolute;
-                left: 1.5rem;
-                top: 2.5rem;
-                bottom: -1rem;
-                width: 2px;
-                background-color: #e5e7eb;
-            }
-
-            .timeline-dot {
-                position: absolute;
-                left: 0.5rem;
-                top: 0.25rem;
-                width: 2rem;
-                height: 2rem;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                font-size: 0.75rem;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                z-index: 10;
-                transition: all 0.3s ease;
-            }
-
-            .timeline-dot.completed {
-                background-color: #10b981;
-            }
-
-            .timeline-dot.current {
-                background-color: #f59e0b;
-                animation: pulse 2s infinite;
-            }
-
-            .timeline-dot.pending {
-                background-color: #9ca3af;
-            }
-
-            @keyframes pulse {
-                0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
-                70% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
-                100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-            }
-
-            /* Responsive adjustments */
-            @media (max-width: 640px) {
-                .timeline-step {
-                    padding-left: 2.5rem;
-                }
-                
-                .timeline-dot {
-                    width: 1.75rem;
-                    height: 1.75rem;
-                    left: 0.25rem;
-                }
-            }
-        `;
-        document.head.appendChild(styleElement);
-    }
 });
-
-// Export for module usage if needed
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { showTimelineModal: window.showTimelineModal };
-}
