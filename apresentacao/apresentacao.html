@@ -3350,40 +3350,102 @@ function getStatusColor(status) {
         sidebarNav.innerHTML = sectorLinks + meetingBtn;
     }
 
+    function calculateTimelineStatistics() {
+        // Calcula estatísticas dos 211 projetos da timeline
+        let totalProjects = 0;
+        let concluidos = 0;
+        let emAndamento = 0;
+        let planejamento = 0;
+        
+        if (window.allTimelineProjects) {
+            totalProjects = Object.keys(window.allTimelineProjects).length;
+            
+            // Conta os projetos por fase de conclusão
+            Object.values(window.allTimelineProjects).forEach(project => {
+                const fases = [
+                    project.estudos_situacao,
+                    project.consulta_situacao,
+                    project.tcu_situacao,
+                    project.edital_situacao,
+                    project.licitacao_situacao,
+                    project.contrato_situacao
+                ];
+                
+                const completas = fases.filter(f => f == 1).length;
+                
+                // Se contrato está completo = Leilão/Contrato Feito
+                if (project.contrato_situacao == 1) {
+                    concluidos++;
+                }
+                // Se tem pelo menos 2 fases completas mas não o contrato = Em Andamento
+                else if (completas >= 2) {
+                    emAndamento++;
+                }
+                // Senão = Planejamento
+                else {
+                    planejamento++;
+                }
+            });
+        }
+        
+        return {
+            total: totalProjects,
+            concluidos: concluidos,
+            emAndamento: emAndamento,
+            planejamento: planejamento
+        };
+    }
+
     function renderKPIs() {
-        const totalProjects = projectData.length;
-        const projectsByStatus = projectData.reduce((acc, p) => {
-            const status = p.status.toLowerCase();
-            if (status.includes('assinado') || status.includes('realizado')) {
-                acc.concluidos = (acc.concluidos || 0) + 1;
-            } else if (status.includes('obras') || status.includes('análise')) {
-                acc.andamento = (acc.andamento || 0) + 1;
-            } else {
-                 acc.planejamento = (acc.planejamento || 0) + 1;
-            }
-            return acc;
-        }, { concluidos: 0, andamento: 0, planejamento: 0 });
+        // Usa as estatísticas da timeline se disponíveis, senão usa os projetos atuais
+        let stats;
+        
+        // Se temos dados de timeline, prioriza eles
+        if (window.allTimelineProjects && Object.keys(window.allTimelineProjects).length > 0) {
+            stats = calculateTimelineStatistics();
+        } else {
+            // Fallback para os dados do projectData
+            const totalProjects = projectData.length;
+            const projectsByStatus = projectData.reduce((acc, p) => {
+                const status = p.status.toLowerCase();
+                if (status.includes('assinado') || status.includes('realizado')) {
+                    acc.concluidos = (acc.concluidos || 0) + 1;
+                } else if (status.includes('obras') || status.includes('análise')) {
+                    acc.andamento = (acc.andamento || 0) + 1;
+                } else {
+                    acc.planejamento = (acc.planejamento || 0) + 1;
+                }
+                return acc;
+            }, { concluidos: 0, andamento: 0, planejamento: 0 });
+            
+            stats = {
+                total: totalProjects,
+                concluidos: projectsByStatus.concluidos,
+                emAndamento: projectsByStatus.andamento,
+                planejamento: projectsByStatus.planejamento
+            };
+        }
 
         return `
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
                 <div class="bg-white p-6 rounded-xl shadow-md flex items-center">
                     <div class="bg-blue-100 p-4 rounded-full mr-4"><i class="fas fa-tasks text-blue-500 fa-2x"></i></div>
                     <div>
-                        <p class="text-3xl font-bold">${totalProjects}</p>
+                        <p class="text-3xl font-bold">${stats.total}</p>
                         <p class="text-gray-500">Projetos Totais</p>
                     </div>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-md flex items-center">
                     <div class="bg-green-100 p-4 rounded-full mr-4"><i class="fas fa-check-circle text-green-500 fa-2x"></i></div>
                     <div>
-                        <p class="text-3xl font-bold">${projectsByStatus.concluidos}</p>
+                        <p class="text-3xl font-bold">${stats.concluidos}</p>
                         <p class="text-gray-500">Leilões/Contratos Feitos</p>
                     </div>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-md flex items-center">
                     <div class="bg-yellow-100 p-4 rounded-full mr-4"><i class="fas fa-cogs text-yellow-500 fa-2x"></i></div>
                     <div>
-                        <p class="text-3xl font-bold">${projectsByStatus.andamento}</p>
+                        <p class="text-3xl font-bold">${stats.emAndamento}</p>
                         <p class="text-gray-500">Em Andamento/Análise</p>
                     </div>
                 </div>
