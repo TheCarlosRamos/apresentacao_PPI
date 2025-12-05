@@ -4110,6 +4110,14 @@ function getStatusColor(status) {
                 };
             });
             
+            // Enforce cascade rule: if a phase is completed, all previous phases must be completed
+            if (lastCompletedIndex > -1) {
+                for (let i = 0; i < lastCompletedIndex; i++) {
+                    phaseStates[i].completed = true;
+                    phaseStates[i].status = 'Concluído';
+                }
+            }
+            
             // Mark the first non-completed phase as current
             if (lastCompletedIndex < phaseStates.length - 1) {
                 phaseStates[lastCompletedIndex + 1].isCurrent = true;
