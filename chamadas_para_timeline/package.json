@@ -1,0 +1,13 @@
+{
+  "name": "postman-collection-runner",
+  "version": "1.0.0",
+  "description": "Script para executar coleções do Postman com Newman",
+  "main": "run-collections.js",
+  "scripts": {
+    "start": "node run-collections.js"
+  },
+  "dependencies": {
+    "newman": "^5.3.2",
+    "csv-parse": "^5.5.0"
+  }
+}

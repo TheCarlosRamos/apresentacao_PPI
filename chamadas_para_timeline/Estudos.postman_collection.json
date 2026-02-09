@@ -1,0 +1,108 @@
+{
+	"info": {
+		"_postman_id": "e4538bc3-23cd-4656-85e8-36c1e3b896a8",
+		"name": "Estudos",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "50548300",
+		"_collection_link": "https://team66-3037.postman.co/workspace/K~5f7ee1b5-280c-4c11-8b7f-2621fd1915d6/collection/37383818-e4538bc3-23cd-4656-85e8-36c1e3b896a8?action=share&source=collection_link&creator=50548300"
+	},
+	"item": [
+		{
+			"name": "estudos",
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "PPI#source147",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "adminppi.source@presidencia.gov.br",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://api.sif-source.org/projects/{{var}}/questions/search/2001218?SPHostUrl=https%3A%2F%2Fwww.sif-source.org&SPLanguage=pt-BR&SPClientTag=0&SPProductNumber=15.0.5023.1183",
+					"protocol": "https",
+					"host": [
+						"api",
+						"sif-source",
+						"org"
+					],
+					"path": [
+						"projects",
+						"{{var}}",
+						"questions",
+						"search",
+						"2001218"
+					],
+					"query": [
+						{
+							"key": "SPHostUrl",
+							"value": "https%3A%2F%2Fwww.sif-source.org"
+						},
+						{
+							"key": "SPLanguage",
+							"value": "pt-BR"
+						},
+						{
+							"key": "SPClientTag",
+							"value": "0"
+						},
+						{
+							"key": "SPProductNumber",
+							"value": "15.0.5023.1183"
+						}
+					]
+				},
+				"description": "Request para buscar status de estudos usando GUIDs."
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "PPI#source147",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "adminppi.source@presidencia.gov.br",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

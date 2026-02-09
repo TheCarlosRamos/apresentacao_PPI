@@ -1,0 +1,53 @@
+{
+  "guid": "18aa7747-5c68-4d1d-9ffb-8883b23ac5f5",
+  "status": 200,
+  "statusText": "OK",
+  "headers": {
+    "cache-control": "no-cache",
+    "pragma": "no-cache",
+    "content-type": "application/json; charset=utf-8",
+    "expires": "-1",
+    "vary": "Accept-Encoding",
+    "server": "Microsoft-IIS/10.0",
+    "x-aspnet-version": "4.0.30319",
+    "x-powered-by": "ASP.NET",
+    "date": "Fri, 05 Dec 2025 14:25:55 GMT",
+    "content-length": "403",
+    "set-cookie": "PERSISTENCE-COOKIE=!TkKA11I40xf0s4rML9e4ef67GDCwWikedPeqmYt+Ngk8+P5p5bS5qQ8Lw/nT+X+J7+NRLSpB+XZM; expires=Sat, 06-Dec-2025 02:25:45 GMT; path=/; Httponly; Secure"
+  },
+  "data": {
+    "FieldValue": {
+      "Type": "ChoiceSingle",
+      "Value": {
+        "Key": 1,
+        "Value": "SIEC"
+      },
+      "Details": null
+    },
+    "Status": {
+      "Status": "Approved",
+      "Comment": null
+    },
+    "Stage": {
+      "Id": 0,
+      "Value": "Assessment"
+    },
+    "Theme": {
+      "Id": 1,
+      "Value": "Governance"
+    },
+    "Subsector": null,
+    "Id": 1036,
+    "SourceId": "2000720",
+    "DocumentRequired": false,
+    "Field": {
+      "Choices": {
+        "1": "SIEC",
+        "2": "SIPE",
+        "3": "SISU"
+      },
+      "Title": "Which Undersecretariat of SEPPI is reponsible for the project ?",
+      "Type": "ChoiceSingle"
+    }
+  }
+}

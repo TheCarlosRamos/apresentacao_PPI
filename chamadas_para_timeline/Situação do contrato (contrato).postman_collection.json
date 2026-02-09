@@ -1,0 +1,93 @@
+{
+	"info": {
+		"_postman_id": "8192e48e-7f5b-4747-92ba-a657fef0c7b8",
+		"name": "Situação do contrato (contrato)",
+		"description": "Coleção criada para consultar a situação do contrato via endpoint SIF-SOURCE. Inclui autenticação, headers, scripts de pré-requisição e teste conforme modelo da request 'New Request' da coleção 'Consulta Publica'. Scripts utilizam a função defineGuids com a lista de GUIDs fornecida pelo usuário e comando para imprimir apenas o response body no console do Postman. Para uso, configure as variáveis de ambiente necessárias.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "50548300",
+		"_collection_link": "https://team66-3037.postman.co/workspace/K~5f7ee1b5-280c-4c11-8b7f-2621fd1915d6/collection/37383818-8192e48e-7f5b-4747-92ba-a657fef0c7b8?action=share&source=collection_link&creator=50548300"
+	},
+	"item": [
+		{
+			"name": "Situação do contrato",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://api.sif-source.org/projects/{{var}}/questions/search/2001230?SPHostUrl=https%3A%2F%2Fwww.sif-source.org&SPLanguage=pt-BR&SPClientTag=0&SPProductNumber=15.0.5023.1183",
+					"protocol": "https",
+					"host": [
+						"api",
+						"sif-source",
+						"org"
+					],
+					"path": [
+						"projects",
+						"{{var}}",
+						"questions",
+						"search",
+						"2001230"
+					],
+					"query": [
+						{
+							"key": "SPHostUrl",
+							"value": "https%3A%2F%2Fwww.sif-source.org"
+						},
+						{
+							"key": "SPLanguage",
+							"value": "pt-BR"
+						},
+						{
+							"key": "SPClientTag",
+							"value": "0"
+						},
+						{
+							"key": "SPProductNumber",
+							"value": "15.0.5023.1183"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "PPI#source147",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "adminppi.source@presidencia.gov.br",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

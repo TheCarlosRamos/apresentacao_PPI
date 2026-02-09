@@ -1,0 +1,55 @@
+{
+  "info": {
+    "_postman_id": "f620b8dd-5394-4528-853f-7a3865115570",
+    "name": "Subsecretaria SEPPI",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Qual subsecretaria?",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://api.sif-source.org/projects/{{GUID}}/questions/search/2000720?SPHostUrl=https%3A%2F%2Fwww.sif-source.org&SPLanguage=pt-BR&SPClientTag=0&SPProductNumber=15.0.5023.1183",
+          "protocol": "https",
+          "host": ["api", "sif-source", "org"],
+          "path": ["projects", "{{GUID}}", "questions", "search", "2000720"],
+          "query": [
+            {
+              "key": "SPHostUrl",
+              "value": "https://www.sif-source.org"
+            },
+            {
+              "key": "SPLanguage",
+              "value": "pt-BR"
+            },
+            {
+              "key": "SPClientTag",
+              "value": "0"
+            },
+            {
+              "key": "SPProductNumber",
+              "value": "15.0.5023.1183"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "adminppi.source@presidencia.gov.br",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "PPI#source147",
+        "type": "string"
+      }
+    ]
+  }
+}

@@ -17,7 +17,7 @@
     "edital_situacao": 0,
     "tcu_situacao": 0,
     "consulta_situacao": 1,
-    "nome_projeto": "3º Ciclo de Oferta Permanente no regime de partilha"
+    "nome_projeto": "3º Ciclo de Oferta Permanente no de partilha"
   },
   "c5dd423a-0cfd-4e36-8fd9-03bb18dc250e": {
     "guid": "c5dd423a-0cfd-4e36-8fd9-03bb18dc250e",
@@ -359,8 +359,8 @@
     "guid": "743c3dec-0596-4049-972b-7ad1e0fb5850",
     "estudos_situacao": 1,
     "contrato_situacao": 0,
-    "licitacao_situacao": 1,
-    "edital_situacao": 1,
+    "licitacao_situacao": 0,
+    "edital_situacao": 0,
     "tcu_situacao": 0,
     "consulta_situacao": 1,
     "nome_projeto": "BR-116/251/MG - Rota das Gerais"

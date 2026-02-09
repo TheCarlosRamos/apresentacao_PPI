@@ -1,0 +1,202 @@
+{
+	"info": {
+		"_postman_id": "a4adcb59-a1bf-410e-8932-6a8932b95c04",
+		"name": "Consulta Publica",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "50548300",
+		"_collection_link": "https://team66-3037.postman.co/workspace/K~5f7ee1b5-280c-4c11-8b7f-2621fd1915d6/collection/37383818-a4adcb59-a1bf-410e-8932-6a8932b95c04?action=share&source=collection_link&creator=50548300"
+	},
+	"item": [
+		{
+			"name": "Consulta Publica",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Lista de GUIDs fornecida pelo usuário",
+							"defineGuids = function() {",
+							"    return [",
+							"        \"ecd74fa2-d64d-42ca-bb9a-a6dbe4dbfef5\",",
+							"        \"d9463ed7-caf9-44cf-812f-f9be35dfa3d2\",",
+							"        \"c5dd423a-0cfd-4e36-8fd9-03bb18dc250e\",",
+							"        \"f2811aa8-a620-4d91-bb8f-8ed1481a9a94\",",
+							"        \"022ea245-c8f4-440a-9a1b-2aa0e2f523fd\",",
+							"        \"3d228904-a18a-4f94-b5ef-710a2df6bcc2\",",
+							"        \"fbf64536-0ab5-49bd-8d69-d9d1dc145c7a\",",
+							"        \"7f98f52b-0417-4a84-a60b-23104b8352e1\",",
+							"        \"e2f2d536-8b26-4c34-ba6d-0d4e8993af3e\",",
+							"        \"33839d16-e8d5-4953-9106-6807bf9fb0f7\",",
+							"        \"5731cec4-2028-4351-8f6c-23301ef6ba4b\",",
+							"        \"8d2bfbb1-1ab5-43ec-bcb4-8b45c530455d\",",
+							"        \"90f37771-7341-47d3-afa5-a9816ba34054\"",
+							"    ];",
+							"};",
+							"",
+							"// Recupera o índice atual do ambiente ou inicializa",
+							"let idx = parseInt(pm.environment.get(\"guid_index\"), 10);",
+							"if (isNaN(idx)) {",
+							"    idx = 0;",
+							"    pm.environment.set(\"guid_index\", idx);",
+							"}",
+							"",
+							"let guids = defineGuids();",
+							"",
+							"// Define a variável {{var}} para o GUID atual",
+							"if (idx < guids.length) {",
+							"    pm.environment.set(\"var\", guids[idx]);",
+							"} else {",
+							"    // Se acabou a lista, limpa a variável",
+							"    pm.environment.unset(\"var\");",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Lista de GUIDs fornecida pelo usuário",
+							"defineGuids = function() {",
+							"    return [",
+							"        \"ecd74fa2-d64d-42ca-bb9a-a6dbe4dbfef5\",",
+							"        \"d9463ed7-caf9-44cf-812f-f9be35dfa3d2\",",
+							"        \"c5dd423a-0cfd-4e36-8fd9-03bb18dc250e\",",
+							"        \"f2811aa8-a620-4d91-bb8f-8ed1481a9a94\",",
+							"        \"022ea245-c8f4-440a-9a1b-2aa0e2f523fd\",",
+							"        \"3d228904-a18a-4f94-b5ef-710a2df6bcc2\",",
+							"        \"fbf64536-0ab5-49bd-8d69-d9d1dc145c7a\",",
+							"        \"7f98f52b-0417-4a84-a60b-23104b8352e1\",",
+							"        \"e2f2d536-8b26-4c34-ba6d-0d4e8993af3e\",",
+							"        \"33839d16-e8d5-4953-9106-6807bf9fb0f7\",",
+							"        \"5731cec4-2028-4351-8f6c-23301ef6ba4b\",",
+							"        \"8d2bfbb1-1ab5-43ec-bcb4-8b45c530455d\",",
+							"        \"90f37771-7341-47d3-afa5-a9816ba34054\"",
+							"    ];",
+							"};",
+							"",
+							"let idx = parseInt(pm.environment.get(\"guid_index\"), 10);",
+							"if (isNaN(idx)) {",
+							"    idx = 0;",
+							"}",
+							"let guids = defineGuids();",
+							"",
+							"// Incrementa o índice para o próximo GUID",
+							"idx++;",
+							"pm.environment.set(\"guid_index\", idx);",
+							"",
+							"// Teste para parar execução quando acabar a lista",
+							"pm.test(\"Parar execução quando acabar a lista de GUIDs\", function () {",
+							"    pm.expect(idx).to.be.at.most(guids.length);",
+							"});",
+							"",
+							"if (idx >= guids.length) {",
+							"    // Para execução do Runner",
+							"    postman.setNextRequest(null);",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "PPI#source147",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "adminppi.source@presidencia.gov.br",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://api.sif-source.org/projects/{{var}}/questions/search/2001221?SPHostUrl=https%3A%2F%2Fwww.sif-source.org&SPLanguage=pt-BR&SPClientTag=0&SPProductNumber=15.0.5023.1183",
+					"protocol": "https",
+					"host": [
+						"api",
+						"sif-source",
+						"org"
+					],
+					"path": [
+						"projects",
+						"{{var}}",
+						"questions",
+						"search",
+						"2001221"
+					],
+					"query": [
+						{
+							"key": "SPHostUrl",
+							"value": "https%3A%2F%2Fwww.sif-source.org"
+						},
+						{
+							"key": "SPLanguage",
+							"value": "pt-BR"
+						},
+						{
+							"key": "SPClientTag",
+							"value": "0"
+						},
+						{
+							"key": "SPProductNumber",
+							"value": "15.0.5023.1183"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "PPI#source147",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "adminppi.source@presidencia.gov.br",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
