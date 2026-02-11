@@ -194,8 +194,50 @@ function getStatusClass(statusColor) {
     return 'status-pending';
 }
 
+// Gerar coordenadas aproximadas baseadas no nome do projeto
+function generateCoordinates(projectName, sector) {
+    // Coordenadas aproximadas para algumas cidades/estados brasileiros
+    const cityCoordinates = {
+        'São Paulo': { lat: -23.5505, lng: -46.6333 },
+        'Rio de Janeiro': { lat: -22.9068, lng: -43.1729 },
+        'Brasília': { lat: -15.8267, lng: -47.9218 },
+        'Salvador': { lat: -12.9714, lng: -38.5014 },
+        'Belo Horizonte': { lat: -19.9167, lng: -43.9345 },
+        'Recife': { lat: -8.0476, lng: -34.8770 },
+        'Fortaleza': { lat: -3.7319, lng: -38.5267 },
+        'Belém': { lat: -1.4558, lng: -48.4902 },
+        'Curitiba': { lat: -25.4284, lng: -49.2733 },
+        'Porto Alegre': { lat: -30.0346, lng: -51.2177 },
+        'Manaus': { lat: -3.1190, lng: -60.0217 },
+        'Goiânia': { lat: -16.6864, lng: -49.2643 }
+    };
+    
+    // Mapeamento de setores para coordenadas padrão
+    const sectorCoordinates = {
+        'Portos': { lat: -23.965, lng: -46.302 }, // Santos
+        'Rodovias': { lat: -19.9167, lng: -43.9345 }, // Belo Horizonte
+        'Ferrovias': { lat: -12.727, lng: -45.896 }, // FIOL
+        'Energia': { lat: -15.8267, lng: -47.9218 }, // Brasília
+        'Óleo e Gás': { lat: -22.9068, lng: -43.1729 }, // Rio de Janeiro
+        'Hidrovias': { lat: -3.7319, lng: -38.5267 }, // Fortaleza
+        'Aeroportos': { lat: -22.9068, lng: -43.1729 }, // Rio de Janeiro
+        'Saneamento': { lat: -23.5505, lng: -46.6333 }, // São Paulo
+        'Outros': { lat: -15.8267, lng: -47.9218 } // Brasília
+    };
+    
+    // Tentar encontrar cidade no nome do projeto
+    for (const [city, coords] of Object.entries(cityCoordinates)) {
+        if (projectName.toLowerCase().includes(city.toLowerCase())) {
+            return coords;
+        }
+    }
+    
+    // Retornar coordenadas do setor
+    return sectorCoordinates[sector] || sectorCoordinates['Outros'];
+}
+
 function generateProjectCard(project) {
-    const coords = project.coordinates || { lat: -15.826, lng: -47.921 };
+    const coords = project.coordinates || generateCoordinates(project.name, project.sector);
     const statusClass = getStatusClass(project.statusColor);
     
     return `
