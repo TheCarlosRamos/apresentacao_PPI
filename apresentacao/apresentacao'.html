@@ -10,6 +10,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="test_maps.js"></script>
+    <script src="fix_pdf.js"></script>
+    <script src="solution_final.js"></script>
+    <script src="save_local_images.js"></script>
+    <script src="pdf_local_images.js"></script>
+    <script src="solution_definitiva.js"></script>
+    <script src="pdf_json_final.js"></script>
+    <script src="pdf_simplificado.js"></script>
+    <script src="export_functions_clean.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Chosen Palette: Calm Harmony -->
     <!-- Application Structure Plan: The SPA uses a dashboard-style, single-page layout with a fixed sidebar for sector navigation (Portos, Rodovias, Ferrovias, etc.). The main content area initially displays a high-level summary with key metrics across all projects and a chart showing project distribution by sector. Clicking a sector in the sidebar or on the chart dynamically filters and displays a grid of project summary cards for that sector. Each card shows the project name and its current status (visualized with a color-coded indicator). Clicking a card opens a modal window, revealing detailed information: a comprehensive description, a visual timeline of key milestones (Estudos, Leilão, Contrato), current status, next steps, and critical "Pontos de Atenção" (risks). This drill-down architecture was chosen to manage the high information density of the report, allowing users to move from a broad overview to specific project details in an intuitive, hierarchical manner, rather than being confronted with a long, unstructured scroll of text. This promotes exploration and makes complex project tracking more digestible. -->
@@ -700,6 +709,14 @@
                     <p class="text-sm text-gray-500">Projetos SIEC - Visualize e exporte os dados dos projetos</p>
                 </div>
                 <div class="flex items-center gap-2">
+                    <button id="btnCaptureSnapshots" class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm transition-colors">
+                        <i class="fas fa-camera"></i>
+                        Capturar Mapas
+                    </button>
+                    <button id="btnCaptureSimple" class="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-sm transition-colors">
+                        <i class="fas fa-image"></i>
+                        Mapas Rápidos
+                    </button>
                     <button id="btnExportPerCard" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm transition-colors">
                         <i class="fas fa-file-pdf"></i>
                         Exportar PDF (1 página por card)
@@ -735,11 +752,11 @@
         </div>
     </div>
 
-    <div id="progress" class="progress-overlay">
+    <div id="progress" class="fixed inset-0 bg-black bg-opacity-45 flex items-center justify-center z-50" style="display: none;">
         <div class="bg-white rounded-lg p-6 w-80 text-center">
             <p class="font-semibold mb-2">Gerando PDF…</p>
             <div class="w-full bg-slate-200 rounded">
-                <div id="bar" class="bg-blue-600 h-2 rounded" style="width:0%"></div>
+                <div id="bar" class="bg-blue-600 h-2 rounded" style="width: 0%"></div>
             </div>
             <p id="pct" class="text-xs text-slate-500 mt-2">0%</p>
         </div>
@@ -3186,9 +3203,326 @@
             const overviewSection = document.getElementById('overview-section');
             const sectionTitle = document.getElementById('section-title');
             const sectionSubtitle = document.getElementById('section-subtitle');
+            // Variável global para armazenar snapshots dos modais
+            window.modalSnapshots = new Map();
+
+            // Funções de progresso
+            function showProgress(pct) {
+                const $progress = document.getElementById('progress');
+                const $bar = document.getElementById('bar');
+                const $pct = document.getElementById('pct');
+                if ($progress && $bar && $pct) {
+                    $progress.style.display = 'flex';
+                    $bar.style.width = pct + '%';
+                    $pct.textContent = pct + '%';
+                }
+            }
+
+            function hideProgress() {
+                const $progress = document.getElementById('progress');
+                if ($progress) {
+                    $progress.style.display = 'none';
+                }
+            }
+
+            // Função para limpar snapshots antigos (mais de 5 minutos)
+            function cleanupOldSnapshots() {
+                const now = Date.now();
+                const fiveMinutes = 5 * 60 * 1000; // 5 minutos em ms
+                
+                for (const [projectId, snapshot] of window.modalSnapshots.entries()) {
+                    if (now - snapshot.timestamp > fiveMinutes) {
+                        window.modalSnapshots.delete(projectId);
+                        console.log('Snapshot antigo removido:', projectId);
+                    }
+                }
+            }
+
+            // Limpar snapshots antigos a cada 2 minutos
+            setInterval(cleanupOldSnapshots, 2 * 60 * 1000);
+
+            // Modais
             const modal = document.getElementById('project-modal');
-            const modalContent = document.getElementById('modal-content');
+            const modalBody = document.getElementById('modal-body');
             const closeModalBtn = document.getElementById('close-modal');
+
+            // Função para capturar snapshot do modal quando aberto
+            async function captureModalSnapshot(projectId) {
+                try {
+                    // Esperar um pouco para o conteúdo carregar
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    const mapContainer = document.querySelector('#projectModal .card--mapa');
+                    if (!mapContainer) {
+                        console.log('Map container não encontrado');
+                        return;
+                    }
+                    
+                    // Capturar o HTML completo do mapa
+                    const mapHTML = mapContainer.innerHTML;
+                    console.log('Snapshot do mapa capturado para o projeto:', projectId);
+                    
+                    // Salvar o snapshot
+                    window.modalSnapshots.set(projectId, {
+                        mapHTML: mapHTML,
+                        timestamp: Date.now()
+                    });
+                    
+                } catch (error) {
+                    console.error('Erro ao capturar snapshot do modal:', error);
+                }
+            }
+
+            // Função para capturar snapshots de todos os projetos
+        async function captureAllProjectSnapshots() {
+            console.log('Iniciando captura de snapshots de todos os projetos...');
+            
+            // Mostrar progresso
+            showProgress(0);
+            const totalProjects = projectData.length;
+            let captured = 0;
+            
+            for (let i = 0; i < projectData.length; i++) {
+                const project = projectData[i];
+                
+                try {
+                    // Criar modal temporário off-screen para capturar o mapa
+                    const tempModal = await createTempModalForSnapshot(project);
+                    
+                    if (tempModal) {
+                        // Capturar o HTML do mapa
+                        const mapContainer = tempModal.querySelector('.card--mapa');
+                        if (mapContainer) {
+                            const mapHTML = mapContainer.innerHTML;
+                            window.modalSnapshots.set(project.id, {
+                                mapHTML: mapHTML,
+                                timestamp: Date.now()
+                            });
+                            console.log(`Snapshot capturado: ${project.name} (${i + 1}/${totalProjects})`);
+                        }
+                        
+                        // Remover modal temporário
+                        document.body.removeChild(tempModal);
+                    }
+                    
+                    captured++;
+                    showProgress(Math.round((captured / totalProjects) * 100));
+                    
+                    // Pequena pausa entre capturas para não sobrecarregar
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                } catch (error) {
+                    console.error(`Erro ao capturar snapshot do projeto ${project.name}:`, error);
+                    captured++;
+                    showProgress(Math.round((captured / totalProjects) * 100));
+                }
+            }
+            
+            hideProgress();
+            console.log(`Captura concluída! ${window.modalSnapshots.size} snapshots criados.`);
+        }
+
+        // Função para criar modal temporário off-screen
+        async function createTempModalForSnapshot(project) {
+            return new Promise((resolve) => {
+                // Criar container off-screen
+                const container = document.createElement('div');
+                container.style.cssText = `
+                    position: absolute;
+                    left: -9999px;
+                    top: 0;
+                    width: 1200px;
+                    height: 800px;
+                    background: white;
+                    z-index: -9999;
+                `;
+                document.body.appendChild(container);
+
+                // Gerar HTML do modal similar ao showModal
+                const modalHTML = generateModalHTML(project);
+                container.innerHTML = modalHTML;
+
+                // Esperar o conteúdo carregar
+                setTimeout(async () => {
+                    try {
+                        // Tentar capturar o mapa como imagem
+                        const mapContainer = container.querySelector('.card--mapa');
+                        if (mapContainer) {
+                            const iframe = mapContainer.querySelector('iframe');
+                            if (iframe) {
+                                // Usar html2canvas para capturar o iframe
+                                const canvas = await html2canvas(mapContainer, {
+                                    scale: 2,
+                                    useCORS: true,
+                                    backgroundColor: '#ffffff',
+                                    allowTaint: true,
+                                    width: mapContainer.offsetWidth,
+                                    height: mapContainer.offsetHeight
+                                });
+                                
+                                // Converter para dataURL
+                                const mapImageURL = canvas.toDataURL('image/png');
+                                
+                                // Salvar como imagem em vez de HTML
+                                window.modalSnapshots.set(project.id, {
+                                    mapImage: `<img src="${mapImageURL}" alt="Mapa do Projeto" class="w-full h-full object-cover" style="width: 100%; height: 100%; object-fit: cover;" />`,
+                                    timestamp: Date.now()
+                                });
+                                
+                                console.log(`Snapshot de imagem capturado: ${project.name}`);
+                            } else {
+                                // Se não for iframe, salvar HTML diretamente
+                                const mapHTML = mapContainer.innerHTML;
+                                window.modalSnapshots.set(project.id, {
+                                    mapHTML: mapHTML,
+                                    timestamp: Date.now()
+                                });
+                                console.log(`Snapshot HTML capturado: ${project.name}`);
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`Erro ao capturar snapshot do projeto ${project.name}:`, error);
+                        // Fallback: salvar HTML mesmo com erro
+                        const mapContainer = container.querySelector('.card--mapa');
+                        if (mapContainer) {
+                            const mapHTML = mapContainer.innerHTML;
+                            window.modalSnapshots.set(project.id, {
+                                mapHTML: mapHTML,
+                                timestamp: Date.now()
+                            });
+                        }
+                    }
+                    
+                    resolve(container);
+                }, 3000); // Aumentar tempo para carregar melhor
+            });
+        }
+
+        // Função para gerar HTML do modal (baseada na showModal original)
+        function generateModalHTML(project) {
+            // Usar a mesma lógica da função showModal para gerar o HTML
+            const mapSection = project.coordinates ? `
+                <div class="card--mapa space-y-4">
+                    <div class="aspect-square w-full h-64 rounded-lg overflow-hidden border border-gray-200">
+                        <iframe 
+                            src="${project.mapUrl}" 
+                            class="w-full h-full"
+                            frameborder="0" 
+                            scrolling="no" 
+                            marginheight="0" 
+                            marginwidth="0">
+                        </iframe>
+                    </div>
+                    <p class="text-xs text-gray-500">Coordenadas: ${project.coordinates.lat.toFixed(4)}, ${project.coordinates.lng.toFixed(4)}</p>
+                </div>
+            ` : `
+                <div class="bg-gray-100 rounded-lg h-64 flex items-center justify-center text-gray-500">
+                    <div class="text-center p-6">
+                        <i class="fas fa-map-marked-alt text-4xl mb-2 text-gray-300"></i>
+                        <p>Localização não disponível</p>
+                    </div>
+                </div>
+            `;
+
+            return `
+                <div class="bg-white rounded-2xl shadow-2xl w-full h-full overflow-y-auto relative">
+                    <div class="p-8 md:p-12">
+                        <div class="modal-info-grid" style="display: grid; gap: 0.8rem; grid-template-columns: 2fr 1fr 1fr; grid-auto-rows: auto; grid-template-areas: 'descricao situacao mapa' 'descricao deliberacao riscos' 'progresso progresso progresso';">
+                            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-200 card--descricao" style="grid-area: descricao;">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <p class="text-sm text-gray-500">${project.sector || 'Setor não especificado'}</p>
+                                        <h2 class="text-2xl font-bold text-gray-900 mt-1">${project.name || 'Projeto sem nome'}</h2>
+                                    </div>
+                                    ${project.status !== 'Rascunho' ? `<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${project.statusColor || 'bg-gray-100 text-gray-800'}">${project.status}</span>` : ''}
+                                </div>
+                                <div class="space-y-4">
+                                    <div>
+                                        <h3 class="text-sm font-semibold text-gray-900 mb-2">Descrição</h3>
+                                        <p class="text-sm text-gray-600 leading-relaxed">${project.details?.description || 'Descrição não disponível'}</p>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-sm font-semibold text-gray-900 mb-2">Situação Atual</h3>
+                                        <p class="text-sm text-gray-600 leading-relaxed">${project.details?.currentSituation || 'Situação não informada'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-200 card--situacao" style="grid-area: situacao;">
+                                <h3 class="text-sm font-semibold text-gray-900 mb-4">Situação</h3>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-600">Status</span>
+                                        <span class="text-sm font-medium">${project.status}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-200 card--mapa" style="grid-area: mapa;">
+                                <h3 class="text-sm font-semibold text-gray-900 mb-4">Localização</h3>
+                                ${mapSection}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Função para capturar snapshots de todos os projetos (versão simplificada)
+        async function captureAllProjectSnapshotsSimple() {
+            console.log('Iniciando captura simplificada de snapshots...');
+            
+            // Mostrar progresso
+            showProgress(0);
+            const totalProjects = projectData.length;
+            let captured = 0;
+            
+            for (let i = 0; i < projectData.length; i++) {
+                const project = projectData[i];
+                
+                try {
+                    let mapImage = '';
+                    
+                    if (project.coordinates) {
+                        const lat = parseFloat(project.coordinates.lat);
+                        const lng = parseFloat(project.coordinates.lng);
+                        
+                        if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                            // Usar Google Maps Static API diretamente
+                            const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=15&size=400x256&maptype=roadmap&markers=color:red%7C${lat},${lng}&key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg`;
+                            
+                            mapImage = `<img src="${mapUrl}" alt="Mapa do Projeto" class="w-full h-full object-cover" style="width: 100%; height: 100%; object-fit: cover;" />`;
+                            
+                            console.log(`Mapa estático criado: ${project.name} (${i + 1}/${totalProjects})`);
+                        }
+                    } else {
+                        mapImage = `<div class="bg-gray-100 rounded-lg h-64 flex items-center justify-center text-gray-500"><div class="text-center p-6"><i class="fas fa-map-marked-alt text-4xl mb-2 text-gray-300"></i><p>Localização não disponível</p></div></div>`;
+                    }
+                    
+                    if (mapImage) {
+                        window.modalSnapshots.set(project.id, {
+                            mapImage: mapImage,
+                            timestamp: Date.now()
+                        });
+                    }
+                    
+                    captured++;
+                    showProgress(Math.round((captured / totalProjects) * 100));
+                    
+                    // Pequena pausa entre capturas
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    
+                } catch (error) {
+                    console.error(`Erro ao capturar snapshot do projeto ${project.name}:`, error);
+                    captured++;
+                    showProgress(Math.round((captured / totalProjects) * 100));
+                }
+            }
+            
+            hideProgress();
+            console.log(`Captura simplificada concluída! ${window.modalSnapshots.size} snapshots criados.`);
+        }
+
+        // Adicionar comando global para captura simplificada
+        window.captureAllSnapshotsSimple = captureAllProjectSnapshotsSimple;
 
             // Supabase config (preencha via window.SUPABASE_URL / window.SUPABASE_ANON antes de carregar esta página, ou edite aqui)
             const SUPABASE_URL = window.SUPABASE_URL || '';
@@ -5972,14 +6306,33 @@
                 }
             }
 
-            // Adicionar eventos aos botões
-            $btnFull.addEventListener('click', exportFullPage);
-            $btnPerCard.addEventListener('click', exportPerCard);
-            if ($btnExportPdf) {
-                $btnExportPdf.addEventListener('click', exportPerCard);
-            }
-
             closeModalBtn.addEventListener('click', hideModal);
+            
+            // Carregar funções de exportação
+            const script = document.createElement('script');
+            script.src = 'export_functions_clean.js';
+            document.head.appendChild(script);
+            
+            // Aguardar carregamento das funções e adicionar eventos
+            script.onload = () => {
+                const $btnFull = document.getElementById('btnExportFull');
+                const $btnPerCard = document.getElementById('btnExportPerCard');
+                const $btnExportPdf = document.getElementById('export-pdf-btn');
+                const $btnCaptureSnapshots = document.getElementById('btnCaptureSnapshots');
+                const $btnCaptureSimple = document.getElementById('btnCaptureSimple');
+                
+                if ($btnFull) $btnFull.addEventListener('click', exportFullPage);
+                if ($btnPerCard) $btnPerCard.addEventListener('click', exportPerCard);
+                if ($btnExportPdf) $btnExportPdf.addEventListener('click', exportPerCard);
+                if ($btnCaptureSnapshots) $btnCaptureSnapshots.addEventListener('click', captureAllProjectSnapshots);
+                if ($btnCaptureSimple) $btnCaptureSimple.addEventListener('click', captureAllProjectSnapshotsSimple);
+                
+                // Iniciar captura automática simplificada após 3 segundos
+                setTimeout(() => {
+                    console.log('Iniciando captura automática simplificada de snapshots...');
+                    captureAllProjectSnapshotsSimple();
+                }, 3000);
+            };
 
             (async () => {
                 // Optional loading state
